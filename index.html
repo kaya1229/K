@@ -5,7 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KICKFLIP 3D FINAL</title>
     <style>
-        body { margin: 0; background: #ffffff; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        body { 
+    margin: 0; 
+    background: rgba(0,0,0,0); /* 투명 배경 */
+    overflow: hidden; 
+}
+
+/* 앱을 드래그해서 옮길 수 있도록 특정 영역 지정 */
+#info {
+    -webkit-app-region: drag; /* 이 부분을 잡고 앱 이동 가능 */
+    cursor: grab;
+    pointer-events: auto; 
+}
         canvas { display: block; }
         #info { position: absolute; bottom: 8%; width: 100%; text-align: center; color: #aaa; font-size: 11px; pointer-events: none; font-family: sans-serif; }
     </style>
@@ -21,6 +32,22 @@
 
     init();
     animate();
+
+    let mouseX = 0, mouseY = 0;
+let targetRotationX = 0, targetRotationY = 0;
+
+// 마우스 움직임 감지
+window.addEventListener('mousemove', (e) => {
+    // 화면 중앙을 기준으로 -1 ~ 1 사이 값 계산
+    mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+    mouseY = (e.clientY / window.innerHeight) * 2 - 1;
+});
+
+// 클릭 시 '흔들기' 액션 (Kickflip 효과)
+window.addEventListener('mousedown', () => {
+    isKicking = true;
+    setTimeout(() => isKicking = false, 500);
+});
 
     function init() {
         scene = new THREE.Scene();
@@ -73,17 +100,30 @@
         deckShape.closePath();
 
         // depth를 1.2로 늘려 데크 너비를 확장 (바퀴를 덮도록)
-        const extrudeSettings = { depth: 1.2, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.05 };
-        const deckGeo = new THREE.ExtrudeGeometry(deckShape, extrudeSettings);
-        const deckMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.1 });
-        const deck = new THREE.Mesh(deckGeo, deckMat);
-        deck.position.set(0, 0, -0.6); // 너비 확장 후 중앙 정렬
+const extrudeSettings = { 
+    depth: 0.8,           // 데크의 폭(두께)을 줄임
+    bevelEnabled: true, 
+    bevelThickness: 0.02, // 베벨 두께를 얇게 하여 더 날렵하게
+    bevelSize: 0.03 
+};        const deckGeo = new THREE.ExtrudeGeometry(deckShape, extrudeSettings);
+const deckMat = new THREE.MeshStandardMaterial({ 
+    color: 0x111111,
+    emissive: 0x222222,
+    metalness: 0.9, 
+    roughness: 0.1,
+    transparent: true,    // 투명 모드 활성화
+    opacity: 0.6          // 0.0(완전 투명) ~ 1.0(불투명) 사이 조정
+});        const deck = new THREE.Mesh(deckGeo, deckMat);
+        deck.position.set(0, 0, -0.4); // 너비 확장 후 중앙 정렬
         boardGroup.add(deck);
 
         // 바퀴 (데크 안쪽으로 정렬)
         const wheelGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.15, 32);
-        const wheelMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-        const truckGeo = new THREE.BoxGeometry(0.1, 0.35, 0.8);
+const wheelMat = new THREE.MeshStandardMaterial({ 
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.8 
+});        const truckGeo = new THREE.BoxGeometry(0.1, 0.35, 0.8);
         const truckMat = new THREE.MeshStandardMaterial({ color: 0x555555 });
 
         [[-1.2, 0], [1.2, 0]].forEach(pos => {
@@ -136,19 +176,27 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
-    function animate() {
-        requestAnimationFrame(animate);
-        clock += 0.02;
+    let isKicking = false;
 
-        // 튀어오르는 보드 애니메이션
-        boardGroup.position.y = 4.3 + Math.sin(clock * 1.5) * 0.3;
-        boardGroup.rotation.x = Math.sin(clock * 0.8) * 0.1;
-        
-        // 전체 부드러운 회전
-        scene.rotation.y += 0.004;
+function animate() {
+    requestAnimationFrame(animate);
+    clock += 0.02;
 
-        renderer.render(scene, camera);
+    // 1. 마우스 위치에 따라 부드럽게 기울어짐 (반응형 흔들기)
+    targetRotationY = mouseX * 0.5;
+    targetRotationX = mouseY * 0.3;
+    
+    scene.rotation.y += (targetRotationY - scene.rotation.y) * 0.05;
+    scene.rotation.x += (targetRotationX - scene.rotation.x) * 0.05;
+
+    // 2. 기존 보드 애니메이션 유지 + 클릭 시 킥플립 효과
+    boardGroup.position.y = 4.3 + Math.sin(clock * 1.5) * 0.3;
+    if(isKicking) {
+        boardGroup.rotation.z += 0.5; // 클릭 시 빠르게 회전
     }
+
+    renderer.render(scene, camera);
+}
 </script>
 </body>
 </html>
