@@ -3,166 +3,147 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>아이돌 킥플립 응원봉 3D 컨셉 (Three.js)</title>
+    <title>KICKFLIP 3D Lightstick</title>
     <style>
-        body { margin: 0; background: #f0f0f0; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif; }
-        #canvas-container { position: relative; width: 400px; height: 600px; display: flex; flex-direction: column; align-items: center; }
-        canvas { display: block; z-index: 1; }
+        body { margin: 0; background: #f0f0f0; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
         
-        /* HTML로 구현된 손잡이 및 디테일 */
-        .stick-details { position: absolute; bottom: 0; width: 100px; height: 420px; display: flex; flex-direction: column; align-items: center; z-index: 2; pointer-events: none; }
-        .connector { width: 140px; height: 30px; background-color: white; background-image: linear-gradient(45deg, #000 25%, transparent 25%), linear-gradient(-45deg, #000 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #000 75%), linear-gradient(-45deg, transparent 75%, #000 75%); background-size: 12px 12px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
-        .handle { width: 100px; height: 300px; background: #1a1a1a; border-radius: 0 0 50px 50px; position: relative; box-shadow: inset 15px 0 30px rgba(255,255,255,0.05); }
-        .button { width: 20px; height: 20px; background: #444; border-radius: 50%; position: absolute; top: 40px; left: 50%; transform: translateX(-50%); border: 2px solid #555; pointer-events: auto; cursor: pointer; }
-        .labels { position: absolute; bottom: -40px; width: 100%; display: flex; justify-content: space-around; font-size: 14px; color: #555; }
+        /* 전체를 감싸는 컨테이너 */
+        #lightstick-app {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        /* Three.js가 들어갈 영역 */
+        #canvas-container {
+            width: 300px;
+            height: 300px;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* 하단 손잡이 부분 */
+        .handle-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: -40px; /* 구체와 연결되도록 살짝 올림 */
+            z-index: 5;
+        }
+
+        .connector { 
+            width: 120px; height: 35px; 
+            background-color: white; 
+            background-image: linear-gradient(45deg, #000 25%, transparent 25%), linear-gradient(-45deg, #000 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #000 75%), linear-gradient(-45deg, transparent 75%, #000 75%); 
+            background-size: 10px 10px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .handle { 
+            width: 90px; height: 250px; 
+            background: #1a1a1a; 
+            border-radius: 0 0 45px 45px; 
+            position: relative; 
+            box-shadow: inset 10px 0 20px rgba(255,255,255,0.05); 
+        }
+
+        .button { 
+            width: 20px; height: 20px; 
+            background: #333; 
+            border-radius: 50%; 
+            position: absolute; top: 30px; left: 50%; 
+            transform: translateX(-50%); 
+            border: 1px solid #444; 
+        }
     </style>
 </head>
 <body>
 
-<div id="canvas-container">
-    <div class="stick-details">
+<div id="lightstick-app">
+    <div id="canvas-container"></div>
+    <div class="handle-section">
         <div class="connector"></div>
         <div class="handle">
             <div class="button"></div>
         </div>
     </div>
-    
-    <div class="labels">
-        <span>FRONT</span>
-        <span>SIDE</span>
-        <span>BACK</span>
-    </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-    // --- 1. 기본 설정 ---
-    const container = document.getElementById('canvas-container');
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, 400 / 400, 0.1, 1000); // 1:1 비율
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); // 배경 투명
-    renderer.setSize(400, 400); // 구체 부분만 렌더링
-    container.insertBefore(renderer.domElement, container.firstChild); // 캔버스를 컨테이너 처음에 삽입
+    // 페이지 로드 후 실행 보장
+    window.onload = function() {
+        const container = document.getElementById('canvas-container');
+        const width = container.clientWidth;
+        const height = container.clientHeight;
 
-    // --- 2. 라이팅 (조명) ---
-    const ambientLight = new THREE.AmbientLight(0xffxffx, 0.5); // 기본 밝기
-    scene.add(ambientLight);
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        
+        renderer.setSize(width, height);
+        container.appendChild(renderer.domElement);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1); // 메인 조명
-    directionalLight.position.set(1, 1, 1);
-    scene.add(directionalLight);
-    
-    const backLight = new THREE.DirectionalLight(0xeeeeee, 0.5); // 뒷면 조명
-    backLight.position.set(-1, -1, -1);
-    scene.add(backLight);
+        // 조명
+        const light1 = new THREE.DirectionalLight(0xffffff, 1);
+        light1.position.set(2, 2, 5);
+        scene.add(light1);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 
-    // --- 3. 객체 생성 (구체 + 보드 + 웨이브 + 글리터) ---
+        // 투명 구체
+        const globe = new THREE.Mesh(
+            new THREE.SphereGeometry(2, 32, 32),
+            new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, shininess: 100 })
+        );
+        scene.add(globe);
 
-    // A. 투명 구체 (유리 질감)
-    const globeGeometry = new THREE.SphereGeometry(2, 64, 64);
-    const globeMaterial = new THREE.MeshPhongMaterial({
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0.25,
-        specular: 0xffffff,
-        shininess: 100,
-        envMap: null, // 환경맵이 있다면 유리 질감이 더 살아남
-        depthWrite: false, // 투명도 겹침 문제 해결
-    });
-    const globe = new THREE.Mesh(globeGeometry, globeMaterial);
-    scene.add(globe);
+        // 스케이트보드 그룹
+        const boardGroup = new THREE.Group();
+        const deck = new THREE.Mesh(
+            new THREE.BoxGeometry(2.2, 0.1, 0.7),
+            new THREE.MeshStandardMaterial({ color: 0x222222 })
+        );
+        boardGroup.add(deck);
 
-    // B. 회색 웨이브 (붕 떠오르는 베이스)
-    const waveGeometry = new THREE.TorusGeometry(1.6, 0.2, 16, 100, Math.PI * 1.8); // 불완전한 링
-    const waveMaterial = new THREE.MeshBasicMaterial({ color: 0xcccccc });
-    const wave = new THREE.Mesh(waveGeometry, waveMaterial);
-    wave.rotation.x = Math.PI / 2; // 평평하게 뉨
-    wave.position.y = -1.2;
-    scene.add(wave);
+        // 바퀴들
+        const wheelGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.1, 12);
+        const wheelMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee });
+        for(let i=0; i<4; i++) {
+            const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+            wheel.rotation.z = Math.PI/2;
+            wheel.position.set(i<2 ? 0.7 : -0.7, -0.15, i%2 ? 0.2 : -0.2);
+            boardGroup.add(wheel);
+        }
+        
+        scene.add(boardGroup);
 
-    // C. 정교한 스케이트보드
-    const board = new THREE.Group(); // 보드와 바퀴를 묶을 그룹
+        // 하단 회색 웨이브 (이미지 참고)
+        const wave = new THREE.Mesh(
+            new THREE.TorusGeometry(1.5, 0.1, 16, 100),
+            new THREE.MeshBasicMaterial({ color: 0xbbbbbb })
+        );
+        wave.rotation.x = Math.PI/2;
+        wave.position.y = -1.2;
+        scene.add(wave);
 
-    // 데크 (Kick 적용된 곡선 형태)
-    const deckShape = new THREE.Shape();
-    deckShape.moveTo(-1.2, 0);
-    deckShape.lineTo(1.2, 0);
-    deckShape.absarc(1.2, 0.2, 0.2, -Math.PI/2, Math.PI/2, false); // 킥 부분
-    deckShape.lineTo(-1.2, 0.4);
-    deckShape.absarc(-1.2, 0.2, 0.2, Math.PI/2, -Math.PI/2, false); // 킥 부분
-    deckShape.lineTo(-1.2, 0);
+        camera.position.z = 7;
 
-    const deckExtrudeSettings = { depth: 0.1, bevelEnabled: true, bevelSegments: 2, steps: 2, bevelSize: 0.05, bevelThickness: 0.05 };
-    const deckGeometry = new THREE.ExtrudeGeometry(deckShape, deckExtrudeSettings);
-    const deckMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.6, roughness: 0.4 });
-    const deck = new THREE.Mesh(deckGeometry, deckMaterial);
-    deck.rotation.x = Math.PI / 2;
-    deck.rotation.y = Math.PI / 12; // 힙한 각도
-    board.add(deck);
+        let clock = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            clock += 0.02;
 
-    // 바퀴 (휠) 4개
-    const wheelGeometry = new THREE.CylinderGeometry(0.15, 0.15, 0.1, 16);
-    const wheelMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
-    
-    const wheels = [];
-    for (let i = 0; i < 4; i++) {
-        wheels[i] = new THREE.Mesh(wheelGeometry, wheelMaterial);
-        wheels[i].rotation.z = Math.PI / 2;
-        board.add(wheels[i]);
-    }
-    // 바퀴 위치 잡기
-    wheels[0].position.set(-0.8, -0.1, 0.1);
-    wheels[1].position.set(0.8, -0.1, 0.1);
-    wheels[2].position.set(-0.8, -0.1, -0.1);
-    wheels[3].position.set(0.8, -0.1, -0.1);
-    
-    board.position.y = -0.5; // 초기 위치 (웨이브보다 살짝 위)
-    scene.add(board);
-
-    // D. 내부 글리터 (반짝이)
-    const glitterGeometry = new THREE.BufferGeometry();
-    const glitterCount = 300;
-    const glitterPositions = new Float32Array(glitterCount * 3);
-    for (let i = 0; i < glitterCount * 3; i++) {
-        glitterPositions[i] = (Math.random() - 0.5) * 3.5; // 구체 안에 분포
-    }
-    glitterGeometry.setAttribute('position', new THREE.BufferAttribute(glitterPositions, 3));
-    const glitterMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.03 });
-    const glitter = new THREE.Points(glitterGeometry, glitterMaterial);
-    scene.add(glitter);
-
-
-    // --- 4. 애니메이션 ---
-    camera.position.z = 6;
-    let time = 0;
-
-    function animate() {
-        requestAnimationFrame(animate);
-        time += 0.01;
-
-        // 보드의 붕 떠오르는 애니메이션 (Sine 파동)
-        board.position.y = -0.3 + Math.sin(time) * 0.2; // -0.5 ~ -0.1 사이를 오감
-        board.rotation.y += 0.005; // 천천히 회전
-
-        // 글리터 반짝임
-        glitter.rotation.y += 0.001;
-
-        // 전체 구체 회전 (사용자 상호작용 대신 천천히)
-        // scene.rotation.y += 0.002;
-
-        renderer.render(scene, camera);
-    }
-    animate();
-
-    // 창 크기 조절 대응
-    window.addEventListener('resize', onWindowResize, false);
-    function onWindowResize() {
-        // 이 컨셉은 고정 크기이므로 생략 가능하지만, 일반적인 구현을 위해 남겨둠
-        // camera.aspect = 400 / 400;
-        // camera.updateProjectionMatrix();
-        // renderer.setSize(400, 400);
-    }
-
+            // 붕 떠오르는 효과
+            boardGroup.position.y = Math.sin(clock) * 0.2 - 0.2;
+            boardGroup.rotation.y += 0.01;
+            
+            renderer.render(scene, camera);
+        }
+        animate();
+    };
 </script>
 </body>
 </html>
